@@ -155,6 +155,53 @@ merge_internal( PyObject* self, PyObject* args, int ( *compare_ptr )( PyObject*,
 	return mergedList;
 }
 
+static inline PyObject*
+merge_fewerbranches( PyObject* self, PyObject* args, int ( *compare_ptr )( PyObject*, PyObject* ) )
+{
+	int pos = 0;
+	int size1, size2;
+	int pos1 = 0, pos2 = 0;
+	int result;
+
+	PyObject* input1 = NULL;
+	PyObject* input2 = NULL;
+	PyObject* v1 = NULL;
+	PyObject* v2 = NULL;
+
+	if( !PyArg_ParseTuple( args, "O!O!", &PyList_Type, &input1, &PyList_Type, &input2 ) )
+		return NULL;
+
+	size1 = PyList_Size( input1 );
+	size2 = PyList_Size( input2 );
+
+	PyObject* output_buffer = PyList_New( size1 + size2 );
+
+	/* should raise an error here. */
+	if( size1 < 0 || size2 < 0 )
+		return NULL; /* Not a list */
+
+	while ((pos1 < size1) & (pos2 < size2)) {
+		v1 = PyList_GetItem( input1, pos1 );
+		Py_INCREF( v1 );
+		v2 = PyList_GetItem( input2, pos2 );
+		Py_INCREF( v2 );	
+		PyList_SetItem( output_buffer, pos++, (v1 <= v2) ? v1 : v2 );
+	    pos1 = (v1 <= v2) ? pos1 + 1 : pos1;
+	    pos2 = (v2 <= v1) ? pos2 + 1 : pos2;
+	  }
+	while (pos1 < size1) {
+		v1 = PyList_GetItem( input1, pos1++ );
+		Py_INCREF( v1 );
+		PyList_SetItem( output_buffer, pos++, v1);
+	}
+  	while (pos2 < size2) {
+		v2 = PyList_GetItem( input2, pos2++ );
+		Py_INCREF( v2 );	
+		PyList_SetItem( output_buffer, pos++, v2);
+  	}
+	return output_buffer;
+}
+
 PyObject* merge( PyObject* self, PyObject* args )
 {
 	return merge_internal( self, args, object_compare );
@@ -173,4 +220,9 @@ PyObject* merge_int( PyObject* self, PyObject* args )
 PyObject* merge_float( PyObject* self, PyObject* args )
 {
 	return merge_internal( self, args, float_compare );
+}
+
+PyObject* merge_fewer_branches( PyObject* self, PyObject* args )
+{
+	return merge_fewerbranches( self, args, long_compare );
 }
